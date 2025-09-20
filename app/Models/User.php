@@ -6,11 +6,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+
 
     /**
      * The attributes that are mass assignable.
@@ -22,6 +24,23 @@ class User extends Authenticatable
         'email',
         'password',
     ];
+
+    /**
+     * Get the identifier that will be stored in the JWT token.
+     */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * Get the custom claims that will be added to the JWT token.
+     */
+    public function getJWTCustomClaims(): array
+    {
+        return [];
+    }
+
 
     /**
      * The attributes that should be hidden for serialization.
@@ -44,5 +63,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get the transactions for the user.
+     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

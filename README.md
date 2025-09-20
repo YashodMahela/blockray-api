@@ -1,61 +1,150 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+BlockRay API – Layered Request Flow
+1. Request
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Entry point of the API.
 
-## About Laravel
+Usually handled via routes in routes/api.php.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Example: POST /api/v1/transactions.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Validates incoming data via FormRequest (StoreTransactionRequest).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Purpose: Ensure only valid data reaches your application.
 
-## Learning Laravel
+2. Middleware
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Sits between the client request and the controller.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Examples: auth:api, throttle, cors.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Purpose:
 
-## Laravel Sponsors
+Authenticate users.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Limit request rate.
 
-### Premium Partners
+Transform request/response globally.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Example: Only logged-in users can create transactions.
 
-## Contributing
+3. Controller
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Handles the request after middleware passes it.
 
-## Code of Conduct
+Responsibilities:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Call Services to execute business logic.
 
-## Security Vulnerabilities
+Return API Resources for structured JSON responses.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Should contain minimal logic; acts as a bridge.
 
-## License
+Example: TransactionController@store.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+4. Service
+
+Contains business logic.
+
+Coordinates data flow between Repository, Jobs, Events, and Models.
+
+Purpose:
+
+Keep controllers clean.
+
+Encapsulate domain-specific logic.
+
+Example: TransactionService::createTransaction():
+
+Generate transaction hash.
+
+Dispatch a job to process the transaction asynchronously.
+
+5. Repository (optional)
+
+Handles database operations for a model.
+
+Abstracts queries from service layer.
+
+Purpose:
+
+Makes database access reusable.
+
+Makes testing easier (mock repository instead of hitting DB).
+
+Example: TransactionRepository::getUserTransactions($userId).
+
+6. Model
+
+Represents database tables.
+
+Handles relationships, fillable fields, and casts.
+
+Example: Transaction model has user_id, amount, currency, status, tx_hash.
+
+Purpose:
+
+Provides Eloquent ORM features.
+
+Encapsulates data structure.
+
+7. Database (DB)
+
+Stores persistent data.
+
+Includes migrations, indexes, constraints for optimized queries.
+
+Example: transactions table with indexes on user_id and status.
+
+8. Event / Job
+
+Events: Trigger actions based on certain application events.
+
+Jobs: Execute tasks asynchronously in the background.
+
+Purpose:
+
+Offload heavy or delayed tasks.
+
+Keep API responses fast.
+
+Example: ProcessTransactionJob sends blockchain confirmation or notification after transaction creation.
+
+9. Response (Resource)
+
+Transforms models into structured JSON responses.
+
+Example: TransactionResource returns:
+
+{
+  "id": 1,
+  "amount": 0.005,
+  "currency": "BTC",
+  "status": "pending",
+  "tx_hash": "tx_ab12cd34...",
+  "created_at": "2025-09-20T21:00:00Z"
+}
+
+
+Purpose:
+
+Keep API responses consistent.
+
+Control exactly which data is exposed to clients.
+
+🔹 Full Flow Recap
+
+Client sends request → Request.
+
+Middleware checks → Authentication, Throttle, CORS.
+
+Controller receives request → minimal logic, calls Service.
+
+Service handles business logic → may call Repository/Jobs/Events.
+
+Repository interacts with DB → CRUD operations.
+
+Model maps DB data → Eloquent ORM.
+
+Job/Event handles async tasks → notifications, blockchain confirmations.
+
+Controller returns Resource → JSON response to client.
